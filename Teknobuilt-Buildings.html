@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Use correct character set. -->
+    <meta charset="utf-8" />
+    <!-- Tell IE to use the latest, best version. -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no" />
+
+    <script src="http://localhost:81/projects/electionol6/libs/Build/Cesium/Cesium.js"></script>
+    <script src="http://localhost:81/projects/electionol6/libs/Apps/Sandcastle/Sandcastle-header.js"></script>
+
+    <title>Cesium Viewer</title>
+</head>
+<style>
+    @import url(http://localhost:81/projects/electionol6/libs/Apps/Sandcastle/CesiumSandcastle.css);
+
+    @import url(http://localhost:81/projects/electionol6/libs/Apps/Sandcastle/templates/bucket.css);
+</style>
+
+<body>
+    <div id="cesiumContainer" class="fullSize"></div>
+    <div id="loadingOverlay">
+        <h1>Loading...</h1>
+    </div>
+    <div id="toolbar"></div>
+   	<script type="text/javascript">
+	
+        var viewer = new Cesium.Viewer("cesiumContainer",{
+            Geocoder: false,
+            Animation: true,
+            CreditsDisplay: false,
+            Timeline: false,
+            FullscreenButton: false
+});
+//this line of code displays all buildings created by open source community
+//viewer.scene.primitives.add(Cesium.createOsmBuildings());
+
+
+
+
+
+// Start off looking at India.
+viewer.camera.setView({
+destination: Cesium.Rectangle.fromDegrees(
+  56.99,
+  0.80,
+  106.00,
+  41.47
+),
+});
+
+
+//adding GeoJSON layers of our buildings from geoserver
+Sandcastle.addToolbarMenu(
+[{
+      text: "Select Layer",
+      onselect: function() {
+
+      }
+  },
+  {
+      text: "Under Construction Buildings",
+      onselect: function() {
+
+          viewer.dataSources.add(
+              Cesium.GeoJsonDataSource.load(
+                  "http://localhost:8081/geoserver/Teknobuilt/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Teknobuilt%3ABuildings2&outputFormat=application%2Fjson"
+              )
+          );
+  
+          //defining extent of layer
+          var rectangle = Cesium.Rectangle.fromDegrees(73.711446, 24.612204, 73.728871,24.624226);
+
+          //defining fly to animation - just like google earth
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(73.720924,24.611111, 3000),
+              orientation: {
+                  heading: Cesium.Math.toRadians(0),
+                  pitch: Cesium.Math.toRadians(-65.0),
+                  roll: 0.0,
+              },
+          });
+
+      },
+  },
+
+
+  //adding extruded buildings
+  {
+      text: "Under Construction Buildings - Extruded",
+      onselect: function() {
+          Cesium.Math.setRandomNumberSeed(0);
+          var usa = Cesium.GeoJsonDataSource.load(
+              "http://localhost:8081/geoserver/Teknobuilt/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Teknobuilt%3ABuildings2&outputFormat=application%2Fjson"
+          );
+          usa
+              .then(function(dataSource) {
+                  viewer.dataSources.add(dataSource);
+
+                  //Get the array of entities
+                  var entities = dataSource.entities.values;
+
+                  var colorHash = {};
+                  for (var i = 0; i < entities.length; i++) {
+                      //For each building, a random color will be assigned.
+                     
+                      var entity = entities[i];
+                      var name = entity.name;
+                      var color = colorHash[name];
+                      if (!color) {
+                          color = Cesium.Color.fromRandom({
+                              alpha: 1.0,
+                          });
+                          colorHash[name] = color;
+                      }
+
+                      //Set the polygon material to our random color.
+                      entity.polygon.material = color;
+                      //Remove the outlines.
+                      entity.polygon.outline = false;
+
+                      //Extrude the polygon based on the floor height.  Extrusion option can be given on the UI too.
+                      entity.polygon.extrudedHeight =
+                          entity.properties.Floors * 10.0;
+                  }
+              })
+              .otherwise(function(error) {
+                  //Display any errrors encountered while loading.
+                  window.alert(error);
+              });
+
+          var rectangle = Cesium.Rectangle.fromDegrees(73.711446, 24.612204, 73.728871,24.624226);
+
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(73.720924,24.611111, 3000),
+              orientation: {
+                  heading: Cesium.Math.toRadians(0),
+                  pitch: Cesium.Math.toRadians(-65.0),
+                  roll: 0.0,
+              },
+              easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
+              duration: 5
+          });
+
+
+      }
+  },
+ 
+
+  {
+      text: "Remove All",
+      onselect: function() {
+          viewer.dataSources.removeAll();
+          viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
+          viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK;
+      }
+  }
+
+
+],
+"toolbar"
+);
+
+Sandcastle.reset = function() {
+viewer.dataSources.removeAll();
+viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
+viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK;
+};
+
+
+
+</script>
+</body>
+</html>
